@@ -1,0 +1,2 @@
+{"sessionId":"12bef6","location":"main.js:loader.load","message":"GLB load started","data":{"t":1773026992860},"timestamp":1773026992860,"hypothesisId":"load-timing"}
+{"sessionId":"12bef6","location":"main.js:manager.onLoad","message":"LoadingManager onLoad – scene ready, showing Enter","data":{"t":1773027066453},"timestamp":1773027066453,"hypothesisId":"load-timing"}
