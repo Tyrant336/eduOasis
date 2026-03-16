@@ -6,7 +6,7 @@ import sqlite_vec
 def init_db(db_path: str) -> sqlite3.Connection:
     """Initialize SQLite database with sqlite-vec extension and create tables."""
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.enable_load_extension(True)
     sqlite_vec.load(conn)
     conn.enable_load_extension(False)

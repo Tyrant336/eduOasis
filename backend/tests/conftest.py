@@ -2,6 +2,10 @@ import os
 import tempfile
 import pytest
 from unittest.mock import AsyncMock, patch
+
+# Set required env vars before any config import happens
+os.environ.setdefault("OPENROUTER_API_KEY", "test-key-placeholder")
+
 from db.init import init_db
 
 

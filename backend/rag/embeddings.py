@@ -1,10 +1,10 @@
 import httpx
-from config import settings
 
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
 
 async def get_embedding(text: str) -> list[float]:
+    from config import settings
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{OPENROUTER_BASE}/embeddings",
@@ -21,6 +21,7 @@ async def get_embedding(text: str) -> list[float]:
 
 
 async def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
+    from config import settings
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{OPENROUTER_BASE}/embeddings",
