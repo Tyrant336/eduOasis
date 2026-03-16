@@ -184,6 +184,33 @@
       </div>
     </div>
 
+    <!-- Chat Panel (RAG Chatbot) -->
+    <div id="chat-panel" class="chat-panel hidden">
+      <div class="chat-panel-header">
+        <h2 class="chat-panel-title">Course Assistant</h2>
+        <button class="chat-panel-close" id="chat-close-btn">exit</button>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-bubble bot">
+          Hi! I'm your course assistant. Ask me anything about the course materials, or drag and drop documents here to add to my knowledge base.
+        </div>
+      </div>
+      <div class="chat-dropzone hidden" id="chat-dropzone">
+        <p>Drop files here to upload</p>
+        <p class="chat-dropzone-formats">.pdf, .md, .txt</p>
+      </div>
+      <div class="chat-input-bar">
+        <input
+          type="text"
+          class="chat-input"
+          id="chat-input"
+          placeholder="Ask a question..."
+          autocomplete="off"
+        />
+        <button class="chat-send-btn" id="chat-send-btn">Send</button>
+      </div>
+    </div>
+
     <!-- Mobile controls -->
     <div class="mobile-control up-arrow">
       <svg
