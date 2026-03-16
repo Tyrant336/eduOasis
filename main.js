@@ -101,6 +101,7 @@ renderer.toneMappingExposure = 1.7;
 
 // Some of our DOM elements, others are scattered in the file
 let isModalOpen = false;
+let isChatOpen = false;
 const modal = document.querySelector(".modal");
 const modalbgOverlay = document.querySelector(".modal-bg-overlay");
 const modalTitle = document.querySelector(".modal-title");
@@ -118,6 +119,17 @@ const secondIcon = document.querySelector(".second-icon");
 const audioToggleButton = document.querySelector(".audio-toggle-button");
 const firstIconTwo = document.querySelector(".first-icon-two");
 const secondIconTwo = document.querySelector(".second-icon-two");
+
+// Chat panel DOM elements
+const chatPanel = document.getElementById("chat-panel");
+const chatCloseBtn = document.getElementById("chat-close-btn");
+const chatMessages = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
+const chatSendBtn = document.getElementById("chat-send-btn");
+const chatDropzone = document.getElementById("chat-dropzone");
+
+const BACKEND_URL = "http://localhost:8081";
+let chatHistory = [];
 
 // Modal stuff
 const modalContent = {
@@ -175,6 +187,147 @@ function hideModal() {
   modalbgOverlay.classList.add("hidden");
   if (!isMuted) {
     playSound("projectsSFX");
+  }
+}
+
+function openChatPanel() {
+  chatPanel.classList.remove("hidden");
+  void chatPanel.offsetWidth;
+  chatPanel.classList.add("visible");
+  isChatOpen = true;
+  isModalOpen = true;
+  chatInput.focus();
+}
+
+function closeChatPanel() {
+  chatPanel.classList.remove("visible");
+  chatPanel.addEventListener(
+    "transitionend",
+    () => {
+      chatPanel.classList.add("hidden");
+    },
+    { once: true }
+  );
+  isChatOpen = false;
+  isModalOpen = false;
+}
+
+function addChatBubble(text, sender) {
+  const bubble = document.createElement("div");
+  bubble.classList.add("chat-bubble", sender);
+  bubble.textContent = text;
+  chatMessages.appendChild(bubble);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return bubble;
+}
+
+function addStreamingBubble() {
+  const bubble = document.createElement("div");
+  bubble.classList.add("chat-bubble", "bot");
+  bubble.textContent = "";
+  chatMessages.appendChild(bubble);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return bubble;
+}
+
+async function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+
+  chatInput.value = "";
+  addChatBubble(text, "user");
+  chatHistory.push({ role: "user", content: text });
+
+  const bubble = addStreamingBubble();
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        history: chatHistory.slice(-10), // Last 5 exchanges = 10 messages
+      }),
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullResponse = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.token) {
+              fullResponse += data.token;
+              bubble.textContent = fullResponse;
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            if (data.done && data.sources && data.sources.length > 0) {
+              const sourcesEl = document.createElement("div");
+              sourcesEl.classList.add("sources");
+              sourcesEl.textContent = "Sources: " + data.sources.join(", ");
+              bubble.appendChild(sourcesEl);
+            }
+            if (data.error) {
+              bubble.classList.add("error");
+              bubble.textContent = "Error: " + data.error;
+            }
+          } catch (e) {
+            // Skip malformed SSE lines
+          }
+        }
+      }
+    }
+
+    if (fullResponse) {
+      chatHistory.push({ role: "assistant", content: fullResponse });
+    }
+  } catch (err) {
+    bubble.classList.add("error");
+    bubble.textContent = "Could not connect to backend. Is the server running?";
+  }
+}
+
+async function uploadFile(file) {
+  const allowed = ["txt", "md", "pdf"];
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (!allowed.includes(ext)) {
+    addChatBubble(`Unsupported file type: .${ext}. Supported: .txt, .md, .pdf`, "error");
+    return;
+  }
+
+  addChatBubble(`Uploading ${file.name}...`, "bot");
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${BACKEND_URL}/upload`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      addChatBubble(`Upload failed: ${err.detail}`, "error");
+      return;
+    }
+
+    const data = await response.json();
+    addChatBubble(
+      `${data.filename} uploaded and indexed (${data.chunks} chunks). You can now ask questions about it!`,
+      "bot"
+    );
+  } catch (err) {
+    addChatBubble("Upload failed. Is the backend running?", "error");
   }
 }
 
@@ -491,7 +644,7 @@ function onClick() {
 }
 
 function handleInteraction() {
-  if (!modal.classList.contains("hidden")) {
+  if (!modal.classList.contains("hidden") || isChatOpen) {
     return;
   }
 
@@ -524,7 +677,11 @@ function handleInteraction() {
       }
     } else {
       if (intersectObject) {
-        showModal(intersectObject);
+        if (intersectObject === "Project_1") {
+          openChatPanel();
+        } else {
+          showModal(intersectObject);
+        }
         if (!isMuted) {
           playSound("projectsSFX");
         }
@@ -611,6 +768,7 @@ function updatePlayer() {
 }
 
 function onKeyDown(event) {
+  if (isChatOpen) return;
   if (event.code.toLowerCase() === "keyr") {
     respawnCharacter();
     return;
@@ -649,6 +807,7 @@ function onKeyDown(event) {
 }
 
 function onKeyUp(event) {
+  if (isChatOpen) return;
   switch (event.code.toLowerCase()) {
     case "keyw":
     case "arrowup":
@@ -860,6 +1019,48 @@ modalExitButton.addEventListener("click", hideModal);
 modalbgOverlay.addEventListener("click", hideModal);
 themeToggleButton.addEventListener("click", toggleTheme);
 audioToggleButton.addEventListener("click", toggleAudio);
+
+// Chat panel event listeners
+chatCloseBtn.addEventListener("click", closeChatPanel);
+chatSendBtn.addEventListener("click", sendMessage);
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && isChatOpen) {
+    closeChatPanel();
+  }
+});
+
+// Drag and drop
+chatPanel.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  chatDropzone.classList.remove("hidden");
+});
+
+chatPanel.addEventListener("dragleave", (e) => {
+  if (!chatPanel.contains(e.relatedTarget)) {
+    chatDropzone.classList.add("hidden");
+  }
+});
+
+chatDropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  chatDropzone.classList.add("hidden");
+  const files = e.dataTransfer.files;
+  for (const file of files) {
+    uploadFile(file);
+  }
+});
+
+chatDropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+});
+
 window.addEventListener("resize", onResize);
 window.addEventListener("click", onClick, { passive: false });
 window.addEventListener("mousemove", onMouseMove);
