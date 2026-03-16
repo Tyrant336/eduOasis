@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "eduOasis-frontend",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["start_server.py"],
+      "port": 8080
+    },
+    {
+      "name": "eduOasis-backend",
+      "runtimeExecutable": "uvicorn",
+      "runtimeArgs": ["main:app", "--port", "8081", "--reload"],
+      "cwd": "backend",
+      "port": 8081
+    }
+  ],
+  "autoVerify": false
+}
