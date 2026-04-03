@@ -1,4 +1,4 @@
-# Edu Oasis
+# 雷霆AI tutor
 
 A 3D explorable scene built with three.js and Blender. Based on the [intro course](https://www.youtube.com/watch?v=X3pPAdQBKHo) to creative web development with three.js and Blender.
 
@@ -25,7 +25,7 @@ A 3D explorable scene built with three.js and Blender. Based on the [intro cours
    python start_server.py
    ```
    (On some systems you may need `python3` instead of `python`.)
-3. In your browser, go to: **http://localhost:8080**
+3. In your browser, go to: **http://localhost:8080**(Often you need to wait like 2 min to open it, don't freak out if you are still loading)
 
 Stop the server with `Ctrl+C` in the terminal.
 

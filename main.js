@@ -4,7 +4,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Octree } from "three/addons/math/Octree.js";
 import { Capsule } from "three/addons/math/Capsule.js";
 
-//Audio with Howler.js
+// Keep tab title in sync (helps if an old cached HTML still had another name)
+document.title = "雷霆AI tutor";
+
+// =========================
+// Audio setup (Howler.js)
+// =========================
 const sounds = {
   backgroundMusic: new Howl({
     src: ["./sfx/music.ogg"],
@@ -36,19 +41,23 @@ let touchHappened = false;
 
 let isMuted = false;
 
+// Helper: play a sound by id (if audio is not muted).
 function playSound(soundId) {
   if (!isMuted && sounds[soundId]) {
     sounds[soundId].play();
   }
 }
 
+// Helper: stop a sound by id.
 function stopSound(soundId) {
   if (sounds[soundId]) {
     sounds[soundId].stop();
   }
 }
 
-//three.js setup
+// =========================
+// Core Three.js scene setup
+// =========================
 const scene = new THREE.Scene();
 const SCENE_BG_COLOR = 0xaec972; // green – keep in sync with style.css #experience
 scene.background = new THREE.Color(SCENE_BG_COLOR);
@@ -58,7 +67,7 @@ const sizes = {
   height: window.innerHeight,
 };
 
-// Physics stuff
+// Simple player physics tuning values.
 const GRAVITY = 30;
 const CAPSULE_RADIUS = 0.35;
 const CAPSULE_HEIGHT = 1;
@@ -82,7 +91,9 @@ const playerCollider = new Capsule(
 let playerVelocity = new THREE.Vector3();
 let playerOnFloor = false;
 
-// Renderer Stuff
+// =========================
+// Renderer configuration
+// =========================
 // See: https://threejs.org/docs/?q=render#api/en/constants/Renderer
 const renderer = new THREE.WebGLRenderer({
   canvas: canvas,
@@ -99,7 +110,7 @@ renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.7;
 
-// Some of our DOM elements, others are scattered in the file
+// Main UI elements used by modal/theme/audio controls.
 let isModalOpen = false;
 const modal = document.querySelector(".modal");
 const modalbgOverlay = document.querySelector(".modal-bg-overlay");
@@ -119,38 +130,35 @@ const audioToggleButton = document.querySelector(".audio-toggle-button");
 const firstIconTwo = document.querySelector(".first-icon-two");
 const secondIconTwo = document.querySelector(".second-icon-two");
 
-// Modal stuff
+// Content map for each clickable object in the 3D scene.
 const modalContent = {
   Project_1: {
-    title: "🍜Recipe Finder👩🏻‍🍳",
+    title: "AI for fun",
     content:
       "Let's get cooking! This project uses TheMealDB API for some recipes and populates my React card components. This shows my skills in working with consistent design systems using components. There is also pagination to switch pages.",
     link: "https://example.com/",
   },
   Project_2: {
-    title: "📋ToDo List✏️",
+    title: "another repository",
     content:
-      "Keeping up with everything is really exhausting so I wanted to create my own ToDo list app. But I wanted my ToDo list to look like an actual ToDo list so I used Tailwind CSS for consistency and also did state management with React hooks like useState.",
+      "",
     link: "https://example.com/",
   },
   Project_3: {
-    title: "🌞Weather App😎",
+    title: "Nothing",
     content:
-      "Rise and shine as they say (but sometimes it's not all that shiny outside). Using a location-based API the user can automatically detect their location and my application will show them the weather near them. I also put some of my design skills to use using Figma.",
+      "Nothing to see here.",
     link: "https://example.com/",
   },
   Chest: {
     title: "💁‍♀️ About Me",
     content:
-      "Hi you found my chest👋, I'm Bella Xu and I am an aspiring creative developer and designer. I just started web development this year! In the signs, you will see some of my most recent projects that I'm proud of. I hope to add a lot more in the future. In my free time, I like to draw, watch TV shows (especially Pokémon), do clay sculpting and needle felting. Reach out if you wanna chat. Bella is OUT!!! 🏃‍♀️",
+      "Hi you found my chest👋, I'm a girl who likes to code and design, maybe Korean.",
   },
-  Picnic: {
-    title: "🍷 Uggh yesss 🧺",
-    content:
-      " Picnics are my thanggg don't @ me. Lying down with some good grape juice inna wine glass and a nice book at a park is my total vibe. If this isn't max aura points 💯 idk what is.",
-  },
+
 };
 
+// Opens the modal and injects content for the selected scene object.
 function showModal(id) {
   const content = modalContent[id];
   if (content) {
@@ -169,6 +177,7 @@ function showModal(id) {
   }
 }
 
+// Closes the modal and restores interaction.
 function hideModal() {
   isModalOpen = false;
   modal.classList.add("hidden");
@@ -178,7 +187,7 @@ function hideModal() {
   }
 }
 
-// Our Intersecting objects
+// Raycasting data used to detect click/tap on scene objects.
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
@@ -199,7 +208,7 @@ const intersectObjectsNames = [
   "Chest",
 ];
 
-// Loading screen and loading manager
+// Loading screen + asset loading lifecycle hooks.
 // See: https://threejs.org/docs/#api/en/loaders/managers/LoadingManager
 const loadingScreen = document.getElementById("loadingScreen");
 const loadingText = document.querySelector(".loading-text");
@@ -208,6 +217,7 @@ const instructions = document.querySelector(".instructions");
 
 const manager = new THREE.LoadingManager();
 
+// Shows the Enter button after loading finishes.
 function showEnterButton() {
   const t1 = gsap.timeline();
   t1.to(loadingText, { opacity: 0, duration: 0 });
@@ -265,8 +275,6 @@ enterButton.addEventListener("click", () => {
   }
 });
 
-//Audio
-
 // GLTF Loader
 // See: https://threejs.org/docs/?q=glt#examples/en/loaders/GLTFLoader
 // Your .glb MUST have these exact object names in Blender:
@@ -293,6 +301,11 @@ loader.load(
   function (glb) {
     let hasAnyCollider = false;
 
+    // Walk every object in the model:
+    // - register click targets
+    // - configure shadows
+    // - add mesh geometry to collision octree
+    // - find player spawn object ("Character")
     glb.scene.traverse((child) => {
       if (intersectObjectsNames.includes(child.name)) {
         intersectObjects.push(child);
@@ -342,7 +355,9 @@ loader.load(
   }
 );
 
-// Lighting and Enviornment Stuff
+// =========================
+// Lighting and environment
+// =========================
 // See: https://threejs.org/docs/?q=light#api/en/lights/DirectionalLight
 // See: https://threejs.org/docs/?q=light#api/en/lights/AmbientLight
 const sun = new THREE.DirectionalLight(0xffffff);
@@ -368,7 +383,7 @@ scene.add(sun);
 const light = new THREE.AmbientLight(0x404040, 2.7);
 scene.add(light);
 
-// Camera Stuff
+// Orthographic camera used for the isometric-like view.
 // See: https://threejs.org/docs/?q=orth#api/en/cameras/OrthographicCamera
 const aspect = sizes.width / sizes.height;
 const camera = new THREE.OrthographicCamera(
@@ -392,7 +407,7 @@ camera.updateProjectionMatrix();
 const controls = new OrbitControls(camera, canvas);
 controls.update();
 
-// Handle when window resizes
+// Keep camera frustum and renderer size in sync with window size.
 function onResize() {
   sizes.width = window.innerWidth;
   sizes.height = window.innerHeight;
@@ -407,10 +422,13 @@ function onResize() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 }
 
-// Interact with Objects and Raycaster
+// =========================
+// Click/tap interactions
+// =========================
 // See: https://threejs.org/docs/?q=raycas#api/en/core/Raycaster
 let isCharacterReady = true;
 
+// Plays a squash-and-stretch jump animation for clicked characters.
 function jumpCharacter(meshID) {
   if (!isCharacterReady) return;
 
@@ -490,6 +508,7 @@ function onClick() {
   handleInteraction();
 }
 
+// Resolves what happens when user clicks/taps a scene object.
 function handleInteraction() {
   if (!modal.classList.contains("hidden")) {
     return;
@@ -547,7 +566,9 @@ function onTouchEnd(event) {
   handleInteraction();
 }
 
-// Movement and Gameplay functions
+// =========================
+// Player movement + collision
+// =========================
 function respawnCharacter() {
   character.instance.position.copy(character.spawnPosition);
 
@@ -563,6 +584,7 @@ function respawnCharacter() {
 }
 
 function playerCollisions() {
+  // Query octree and push player capsule out of intersecting geometry.
   const result = colliderOctree.capsuleIntersect(playerCollider);
   playerOnFloor = false;
 
@@ -585,14 +607,17 @@ function updatePlayer() {
     return;
   }
 
+  // Apply gravity while airborne.
   if (!playerOnFloor) {
     playerVelocity.y -= GRAVITY * 0.035;
   }
 
+  // Move capsule first, then resolve collisions.
   playerCollider.translate(playerVelocity.clone().multiplyScalar(0.035));
 
   playerCollisions();
 
+  // Copy capsule location back to visible character mesh.
   character.instance.position.copy(playerCollider.start);
   character.instance.position.y -= CAPSULE_RADIUS;
 
@@ -669,7 +694,9 @@ function onKeyUp(event) {
   }
 }
 
-// Toggle Theme Function
+// =========================
+// UI toggles (theme + audio)
+// =========================
 function toggleTheme() {
   if (!isMuted) {
     playSound("projectsSFX");
@@ -733,7 +760,7 @@ function toggleAudio() {
   }
 }
 
-// Mobile controls
+// Mobile/desktop directional inputs map into the same pressedButtons state.
 const mobileControls = {
   up: document.querySelector(".mobile-control.up-arrow"),
   left: document.querySelector(".mobile-control.left-arrow"),
@@ -791,7 +818,7 @@ function handleJumpAnimation() {
 function handleContinuousMovement() {
   if (!character.instance) return;
 
-  // Walking: set horizontal velocity from keys every frame (no jump)
+  // Horizontal movement comes from input each frame.
   playerVelocity.x = 0;
   playerVelocity.z = 0;
   if (pressedButtons.up) {
@@ -855,7 +882,7 @@ window.addEventListener("blur", () => {
   });
 });
 
-// Adding Event Listeners (tbh could make some of these just themselves rather than seperating them, oh well)
+// Wire all app-level event listeners.
 modalExitButton.addEventListener("click", hideModal);
 modalbgOverlay.addEventListener("click", hideModal);
 themeToggleButton.addEventListener("click", toggleTheme);
@@ -867,7 +894,7 @@ window.addEventListener("touchend", onTouchEnd, { passive: false });
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("keyup", onKeyUp);
 
-// Like our movie strip!!! Calls on each frame.
+// Main render loop: update gameplay, then camera, then render.
 function animate() {
   updatePlayer();
   handleContinuousMovement();
